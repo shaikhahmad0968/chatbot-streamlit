@@ -1,10 +1,8 @@
 from chat_manager import ChatManager
 import requests
-from dotenv import load_dotenv
-import os
+import streamlit as st
 
-load_dotenv()
-API_KEY = os.getenv("API_KEY")
+API_KEY = st.secrets["API_KEY"]
 # Use the correct OpenAI compatibility endpoint
 URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
