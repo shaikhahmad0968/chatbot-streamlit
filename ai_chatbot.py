@@ -1,7 +1,48 @@
-#si_chstbot.py
+#ai_chstbot.py
 from chat_manager import ChatManager
 import requests
 import streamlit as st
+
+from pypdf import PdfReader
+from sentence_transformers import SentenceTransformer
+import chromadb
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+client = chromadb.Client()
+
+try:
+    collection = client.get_collection("pdf_data")
+except Exception:
+    collection = client.create_collection("pdf_data")
+
+def load_pdf(file):
+    reader = PdfReader(file)
+    text = ""
+    for page in reader.pages:
+        if page.extract_text():
+            text += page.extract_text()
+    return text
+
+def chunk_text(text, chunk_size=500):
+    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+def store_chunks(chunks):
+    embeddings = model.encode(chunks).tolist()
+    # Optional: Clear old documents if you upload a new PDF
+    for i, chunk in enumerate(chunks):
+        collection.add(
+            ids=[f"chunk_{i}"],
+            documents=[chunk],
+            embeddings=[embeddings[i]]
+        )
+
+def search_chunks(query):
+    query_embedding = model.encode([query]).tolist()
+    results = collection.query(query_embeddings=query_embedding, n_results=3)
+    # Return the closest documents
+    if results["documents"] and len(results["documents"][0]) > 0:
+        return results["documents"][0]
+    return []
 
 API_KEY = st.secrets["API_KEY"]
 # Use the correct OpenAI compatibility endpoint
@@ -62,12 +103,16 @@ def get_ai_response(history, mode="General"):
         "model": "gemini-2.5-flash-lite",
         "messages": final_payload
     }
-    response = requests.post(URL, headers=headers, json=data)
-    if response.status_code !=200:
-        return f"Error: {response.status_code} - {response.text}"
     
-    result = response.json()
-    return result["choices"][0]["message"]["content"]
+    try:
+        response = requests.post(URL, headers=headers, json=data)
+        if response.status_code != 200:
+            return f"Error: {response.status_code} - {response.text}"
+        
+        result = response.json()
+        return result["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Error: API not responding ({str(e)})"
 
 if __name__ == "__main__":
     chat = ChatManager()
