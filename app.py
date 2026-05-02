@@ -4,7 +4,8 @@ from ai_chatbot import get_ai_response
 from chat_manager import ChatManager
 
 st.set_page_config(page_title="AIML Chatbot", page_icon="🤖")
-st.title("AI Chatbot")
+st.title("AI Study Assistant 🤖")
+st.caption("Chat, learn DSA, or ask questions from PDFs")
 
 mode = st.sidebar.selectbox(
     "Select Mode",
@@ -28,11 +29,11 @@ if len(st.session_state.chat_manager.messages) == 0:
     st.info("👋 Welcome! Select a mode from the sidebar and say hello to get started.", icon="ℹ️")
 
 if prompt := st.chat_input("What is on your mind?"):
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(prompt)
     st.session_state.chat_manager.add_message("user", prompt)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🤖"):
         with st.spinner("Thinking..."):
             history = st.session_state.chat_manager.messages
             response = get_ai_response(history, mode)
