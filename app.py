@@ -1,6 +1,6 @@
 # app.py
 import streamlit as st
-from ai_chatbot import get_ai_response, load_pdf, chunk_text, store_chunks, search_chunks
+from ai_chatbot import get_ai_response, load_pdf, chunk_text, store_chunks, search_chunks, generate_study_summary
 from chat_manager import ChatManager
 
 from fpdf import FPDF
@@ -57,8 +57,39 @@ if st.sidebar.button("Clear Chat 🗑️"):
     st.session_state.chat_manager.save_messages()
     st.rerun()
 
-pdf_data = generate_pdf(st.session_state.chat_manager.messages)
+st.sidebar.markdown("---")
+st.sidebar.subheader("📝 Session Summary")
 
+if st.sidebar.button("End Session & Summarize ✨", use_container_width=True):
+    if st.session_state.chat_manager.messages:
+        st.toast("Generating summary...", icon="⏳")
+        summary = generate_study_summary(st.session_state.chat_manager.messages)
+        st.session_state["study_summary"] = summary
+    else:
+        st.sidebar.warning("No chat to summarize yet!")
+
+if "study_summary" in st.session_state:
+    with st.expander("📖 Your Study Summary", expanded=True):
+        st.markdown(st.session_state["study_summary"])
+    
+    summary_pdf = FPDF()
+    summary_pdf.add_page()
+    summary_pdf.set_font("Arial", style="B", size=16)
+    summary_pdf.cell(200, 10, txt="Study Session Summary", ln=True, align="C")
+    summary_pdf.ln(8)
+    summary_pdf.set_font("Arial", size=12)
+    clean = st.session_state["study_summary"].encode('latin-1', 'replace').decode('latin-1')
+    summary_pdf.multi_cell(0, 8, txt=clean)
+    
+    st.sidebar.download_button(
+        label="Download Summary PDF 📥",
+        data=bytes(summary_pdf.output()),
+        file_name="study_summary.pdf",
+        mime="application/pdf"
+    )
+
+st.sidebar.markdown("---")
+pdf_data = generate_pdf(st.session_state.chat_manager.messages)
 st.sidebar.download_button(
     label="Download Chat (PDF) 📄",
     data=pdf_data,
@@ -88,10 +119,11 @@ if prompt := st.chat_input("What is on your mind?"):
                 if context_chunks:
                     context = "\n".join(context_chunks)
                     
-                    temp_msg = dict(history[-1]) 
+                    temp_msg = dict(history[-1])
                     temp_msg["content"] = f"Answer based only on this context:\n{context}\n\nQuestion: {prompt}"
                     history = list(history)
                     history[-1] = temp_msg
+
             response = get_ai_response(history, mode)
             if response.startswith("Error:"):
                 st.error('API connection failed. Please try again.', icon="🚨")

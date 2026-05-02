@@ -113,6 +113,32 @@ def get_ai_response(history, mode="General"):
         return result["choices"][0]["message"]["content"]
     except Exception as e:
         return f"Error: API not responding ({str(e)})"
+    
+def generate_study_summary(messages):
+    if not messages:
+        return "No conversation to summarize."
+    
+    conversation = "\n".join([
+        f"{'User' if m['role'] == 'user' else 'AI'}: {m['content']}"
+        for m in messages
+    ])
+    
+    prompt = f"""Based on this study session conversation, generate a structured summary:
+
+{conversation}
+
+Respond in this exact format:
+## 📚 What I Learned Today
+
+**Key Concepts:**
+- (list 3-5 main concepts discussed)
+
+**Important Terms:**
+- (list key terms with one-line definitions)
+
+Keep it concise and student-friendly."""
+
+    return get_ai_response([{"role": "user", "content": prompt}], mode="General")
 
 if __name__ == "__main__":
     chat = ChatManager()
